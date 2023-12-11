@@ -1,0 +1,64 @@
+library(h2o)
+library(caret)
+library(jsonlite)
+h2o.init()
+
+predictors<- c(colnames(variabili[,-1]))
+variabili<- variabili %>% mutate_at(.vars=predictors,.funs=as.factor)
+summary(variabili)
+training= as.h2o(variabili)
+
+hyper_grid.h2o<- list(ntrees=seq(100,500, by=50),
+                      mtries=2:6,
+                      max_depth= seq(10,30, by=10),
+                      min_rows=seq(1,3, by=1),
+                      nbins=seq(20,30, by=10),
+                      sample_rate=seq(0.55,0.75, by=0.05)
+                      )
+sapply(hyper_grid.h2o, length) %>% prod()
+
+hyper_grid.h2o2<- list(ntrees=seq(100,500, by=50),
+                      mtries=2:6,
+                      max_depth= seq(10,30, by=10)
+                      )
+
+sapply(hyper_grid.h2o2, length) %>% prod()
+
+search_criteria <- list(strategy = "RandomDiscrete", 
+                        max_models = 36, 
+                        seed = 1)
+search_criteria_2<- list(strategy= "RandomDiscrete",
+                         max_models= 50,
+                         max_runtime_sec=5*60
+                         )
+
+system.time(random_grid<- h2o.grid(algorithm = "randomForest",
+                                   grid_id = "gridID",
+                                   x=predictors,
+                                   y="ORD_TOTALE",
+                                   seed=1,
+                                   nfolds=10,
+                                   training_frame = training,
+                                   hyper_params = hyper_grid.h2o,
+                                   search_criteria = search_criteria_2))
+
+grid_perf <- h2o.getGrid(grid_id = "gridID",
+                         sort_by = "MAE",
+                         decreasing = FALSE)
+grid_perf@summary_table
+
+best_gbm <- h2o.getModel(grid_perf@model_ids [[1]])
+
+
+
+Imp<-h2o.varimp(random_grid)
+
+h2o.varimp_plot(modelGLM)
+
+range(variabili$ORD_TOTALE)
+
+perf<-h2o.performance(best_gbm)
+perf<- unlist(perf@metrics[-c(1:9)])
+perf<-data.frame(misura= names(perf), valore= as.numeric(perf))
+library(openxlsx)
+write.xlsx(perf, file="performanceRFGRID.xlsx", overwrite = TRUE)
