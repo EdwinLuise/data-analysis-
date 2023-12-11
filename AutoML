@@ -1,0 +1,38 @@
+library(h2o)
+library(h2o)
+library(caret)
+library(jsonlite)
+h2o.init()
+variabili<- select(dt,
+                   ...,
+)
+predictors<- c(colnames(variabili[,-1]))
+variabili<- variabili %>% mutate_at(.vars=predictors,.funs=as.factor)
+summary(variabili)
+training= as.h2o(variabili)
+
+aml <- h2o.automl(y = "ORD_TOTALE", training_frame = training, max_runtime_secs = 30)
+lb <- h2o.get_leaderboard(aml)
+head(lb)
+"to increase the space of searching methods"
+h2o.shutdown(FALSE)
+h2o.init(max_mem_size = "4G")
+
+aml1 <- h2o.automl(y = "ORD_TOTALE", training_frame = training)
+lb1 <- h2o.get_leaderboard(aml1)
+head(lb1)
+am1
+
+model_ids <- as.data.frame (lb1)$model_id
+
+best_aml1 <- aml1@leader
+best_aml1
+h2o.varimp_plot(best_aml1, MAE)
+
+perf1<- h2o.performance(best_aml1)
+perf
+perf<- unlist(perf1@metrics[-c(1:9)])
+perf<-data.frame(misura= names(perf), valore= as.numeric(perf))
+library(openxlsx)
+write.xlsx(perf, file="performanceAML1.xlsx", overwrite = TRUE)
+
