@@ -1,0 +1,28 @@
+blibrary(h2o)
+library(caret)
+library(jsonlite)
+h2o.init()
+variabili<- select(dt,
+                   ...,
+                   )
+predictors<- c(colnames(variabili[,-1]))
+variabili<- variabili %>% mutate_at(.vars=predictors,.funs=as.factor)
+summary(variabili)
+training= as.h2o(variabili)
+
+modelGLM<- h2o.glm(y="...", x=predictors, 
+        training_frame = training, 
+        nfolds=5, alpha=0.5,
+        lambda_search=FALSE)
+
+h2o.partialPlot(modelGLM, training, c("...","..."), plot_stddev=FALSE)
+
+
+h2o.varimp_plot(modelGLM)
+
+perf<- h2o.performance(modelGLM)
+perf
+perf<- unlist(perf@metrics[-c(1:9)])
+perf<-data.frame(misura= names(perf), valore= as.numeric(perf))
+library(openxlsx)
+write.xlsx(perf, file="performanceGLM05.xlsx", overwrite = TRUE)
