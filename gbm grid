@@ -1,0 +1,38 @@
+library(h2o)
+library(caret)
+library(jsonlite)
+h2o.init()
+
+predictors<- c(colnames(variabili[,-1]))
+variabili<- variabili %>% mutate_at(.vars=predictors,.funs=as.factor)
+summary(variabili)
+training= as.h2o(variabili)
+gbm_params <- list(ntrees = c (100, 150, 200), 
+                   max_depth = c(3, 5, 7), 
+                   learn_rate = c(0.001, 0.01, 0.1)
+                   )
+sapply(gbm_params, length) %>% prod()
+
+gbm_grid <- h2o.grid("gbm",
+                     grid_id = "gbm_grid",
+                     x = predictors,
+                     y = "ORD_TOTALE",
+                     training_frame = training,
+                     seed = 1,
+                     hyper_params = gbm_params
+                     )
+gbm_grid
+
+grid_perf <- h2o.getGrid(grid_id = "gbm_grid",
+                         sort_by = "MAE",
+                         decreasing = FALSE)
+grid_perf@summary_table
+
+best_gbm <- h2o.getModel(grid_perf@model_ids [[1]])
+best_gbm
+
+perf<- h2o.performance(best_gbm)
+perf<- unlist(perf@metrics[-c(1:9)])
+perf<-data.frame(misura= names(perf), valore= as.numeric(perf))
+library(openxlsx)
+write.xlsx(perf, file="performanceGBMGRID.xlsx", overwrite = TRUE)
